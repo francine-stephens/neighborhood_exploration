@@ -1,0 +1,55 @@
+---
+title: "Ingest Census Data"
+author: "Francine Stephens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      echo = FALSE)
+
+library(tidyverse)
+library(tidycensus)
+library(tigris)
+library(sf)
+options(tigris_use_cache = TRUE)
+
+# Parameters
+wd <- getwd()
+data_folder <- "data/"
+
+```
+
+
+
+# Import Data
+```{r}
+# Point Location Dataframe
+name <- c("Frost")
+lat <- c(29.4268662)
+lng <- c(-98.4978473)
+
+point_locations <- data.frame(name  = name,
+                  lat = lat,
+                  lng = lng)
+
+point_locations_sf <- st_as_sf(point_locations, coords = c(x = "lng",
+                                                           y = "lat")
+                               )
+```
+
+
+```{r}
+# Census Geography
+places_sf <- places(state = "48", year =2022)
+
+counties_sf <- counties(state = "48", year = 2022)
+bexar_sf <- counties_sf %>% 
+  filter(NAME == "Bexar")
+tracts_sf <- tracts(state = "48", county = "029")
+```
+
+
