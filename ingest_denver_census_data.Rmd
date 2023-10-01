@@ -26,8 +26,12 @@ data_folder <- "data/"
 Sys.setenv(CENSUS_KEY="99ccb52a629609683f17f804ca875115e3f0804c")
 mapbox <- "sk.eyJ1IjoiZnJhbmNpbmVzdGVwaGVucyIsImEiOiJja2ljb3VrczMwdDdhMnhsNjA4Yjh1c2h1In0.WJjq6TysT6zZZnaxsN0s5g"
 token <- "pk.eyJ1IjoiZnJhbmNpbmVzdGVwaGVucyIsImEiOiJjazhobGNramgwMDF1M2Zsa2tieHV2eDF1In0.60HwmeTBd_q8TY5yAA0kZw"
-mb_access_token(token, install = TRUE)
+mb_access_token(token, overwrite = TRUE)
 readRenviron("~/.Renviron")
+
+state_fips <- "08"
+county_fips <- "031"
+state_county_fips <- "state:08+county:031"
 ```
 
 
@@ -52,12 +56,12 @@ point_locations_sf <- st_as_sf(point_locations,
 
 ```{r}
 # Census Geography
-counties_sf <- counties(state = "48", year = 2022)
+counties_sf <- counties(state = state_fips, year = 2022)
 
-bexar_sf <- counties_sf %>% 
-  filter(NAME == "Bexar")
+county_sf <- counties_sf %>% 
+  filter(COUNTYFP == county_fips)
 
-tracts_sf <- tracts(state = "48", county = "029")
+tracts_sf <- tracts(state = state_fips, county = county_fips)
 
 ```
 
@@ -67,7 +71,7 @@ all_demog_vars <- getCensus(
     name = "acs/acs5",
     vintage = 2021,
     region = "tract:*",
-    regionin = "state:48+county:029",
+    regionin = state_county_fips,
     vars = c(
       # Age
       "B01001_001E",
@@ -130,25 +134,15 @@ isochrone <- mb_isochrone(
 
 ```{r}
 
-tracts_demogs_within_sf <- tracts_demogs_sf %>% 
-      st_transform(., crs = 4326) %>% 
-      st_filter(.,  isochrone %>% 
-                  filter(time == 20), .predicate = st_within)
-
-tracts_demogs_intersects_sf <- tracts_demogs_sf %>% 
-      st_transform(., crs = 4326) %>% 
-      st_filter(.,  isochrone %>% 
-                  filter(time == 20), .predicate = st_intersects)
-
-tracts_demogs_focal_sf <- rbind(tracts_demogs_within_sf, 
-                                tracts_demogs_intersects_sf)
 ```
 
 
 
 ------
 
-# Create Map
+# Create Maps
+
+### Rent
 ```{r}
 # Color Palettes
 rent_pal <- colorNumeric(
@@ -167,21 +161,21 @@ rent2br_pal <- colorNumeric(
 ```{r}
 # Rent Overall
 leaflet() %>% 
-  setView(lng = lng, lat = lat, zoom = 11) %>%
+  #setView(lng = lng, lat = lat, zoom = 11) %>%
   addMapboxTiles(
     style_id = "streets-v9",
     username = "mapbox"
   ) %>%
-  addMarkers(data = point_locations_sf
-                   #radius = 0.8,
-                   #color = "navy"
-                     ) %>% 
+  # addMarkers(data = point_locations_sf
+  #                  #radius = 0.8,
+  #                  #color = "navy"
+  #                    ) %>% 
   # TRACTS LAYERS
   addPolygons(
-    data = tracts_demogs_focal_sf,
+    data = tracts_demogs_sf,
     fill = TRUE,
     fillColor = ~rent_pal(median_rent),
-    fillOpacity = 0.5,
+    fillOpacity = 0.75,
     color = "white",
     opacity = 0.5, 
     weight = 0.4,
@@ -194,10 +188,10 @@ leaflet() %>%
     group = "All Rentals"
   ) %>%
   addPolygons(
-    data = tracts_demogs_focal_sf,
+    data = tracts_demogs_sf,
     fill = TRUE,
     fillColor = ~rent_pal(median_rent_2br),
-    fillOpacity = 0.5,
+    fillOpacity = 0.75,
     color = "white",
     opacity = 0.5,
     weight = 0.4,
@@ -211,17 +205,17 @@ leaflet() %>%
 
   ) %>%
   # ISOCHRONE
-  addPolygons(
-    data = isochrone %>% 
-      filter(time == 20),
-    fill = FALSE,
-    stroke = TRUE,
-    weight = 1.2,
-    color = "navy", 
-    opacity = 0.9, 
-    dashArray = "3",
-    group = "20-Minute Work Commute"
-  ) %>% 
+  # addPolygons(
+  #   data = isochrone %>% 
+  #     filter(time == 20),
+  #   fill = FALSE,
+  #   stroke = TRUE,
+  #   weight = 1.2,
+  #   color = "navy", 
+  #   opacity = 0.9, 
+  #   dashArray = "3",
+  #   group = "20-Minute Work Commute"
+  # ) %>% 
   addLegend("bottomright", pal = rent_pal, values = tracts_demogs_sf$median_rent,
     title = "Median Gross Rents",
     labFormat = labelFormat(prefix = "$", big.mark = ","),
@@ -230,11 +224,114 @@ leaflet() %>%
   addLegend("bottomright", pal = rent_pal, title="2 Bedroom Rentals",
             values = tracts_demogs_sf$median_rent_2br, group="2 Bedroom Rentals") %>%
   addLayersControl(
-    overlayGroups = c("All Rentals", "2 Bedroom Rentals", "20-Minute Work Commute"),
+    overlayGroups = c("All Rentals", "2 Bedroom Rentals"),
     position = "topright",
     options = layersControlOptions(collapsed = F)
   )  %>% 
   hideGroup("2 Bedroom Rentals")
+
+
+```
+
+### Education/Income
+```{r}
+# Color Palettes
+ed_pal <- colorNumeric(
+  palette = "Greens",
+  domain = tracts_demogs_sf$percent_baplus
+)
+
+medhhinc_pal <- colorNumeric(
+  palette = "Greens",
+  domain = tracts_demogs_sf$median_hhinc
+)
+
+
+```
+
+```{r}
+# Rent Overall
+leaflet() %>% 
+  #setView(lng = lng, lat = lat, zoom = 11) %>%
+  addMapboxTiles(
+    style_id = "streets-v9",
+    username = "mapbox"
+  ) %>%
+  # addMarkers(data = point_locations_sf
+  #                  #radius = 0.8,
+  #                  #color = "navy"
+  #                    ) %>% 
+  # TRACTS LAYERS
+  addPolygons(
+    data = tracts_demogs_sf,
+    fill = TRUE,
+    fillColor = ~ed_pal(percent_baplus),
+    fillOpacity = 0.75,
+    color = "white",
+    opacity = 0.5, 
+    weight = 0.4,
+    label = ~paste0("Residents with at least a BA: ", round(percent_baplus, digits= 1), "%"
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    ),
+    group = "Education"
+  ) %>%
+  addPolygons(
+    data = tracts_demogs_sf,
+    fill = TRUE,
+    fillColor = ~medhhinc_pal(median_hhinc),
+    fillOpacity = 0.75,
+    color = "white",
+    opacity = 0.5,
+    weight = 0.4,
+    label = ~paste0("Median Household Income: $", median_hhinc
+    ),
+    highlightOptions = highlightOptions(
+      weight = 2,
+      opacity = 1
+    ),
+    group = "Income"
+
+  ) %>%
+  # ISOCHRONE
+  # addPolygons(
+  #   data = isochrone %>% 
+  #     filter(time == 20),
+  #   fill = FALSE,
+  #   stroke = TRUE,
+  #   weight = 1.2,
+  #   color = "navy", 
+  #   opacity = 0.9, 
+  #   dashArray = "3",
+  #   group = "20-Minute Work Commute"
+  # ) %>% 
+  addLegend("bottomright", pal = ed_pal, values = tracts_demogs_sf$percent_baplus,
+    title = "% Residents with a Bacherlors Degree",
+    labFormat = labelFormat(suffix = "%"),
+    group = "Education"
+  ) %>%
+  addLegend("bottomright", pal = medhhinc_pal, title="Income",
+            values = tracts_demogs_sf$median_hhinc, group="Income") %>%
+  addLayersControl(
+    overlayGroups = c("Education", "Income"),
+    position = "topright",
+    options = layersControlOptions(collapsed = F)
+  )  %>% 
+  hideGroup("Income")
+
+
+```
+
+### Age/Household Comp
+
+```{r}
+
+
+```
+
+```{r}
 
 
 ```
