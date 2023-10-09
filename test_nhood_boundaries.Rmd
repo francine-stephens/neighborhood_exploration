@@ -47,6 +47,16 @@ city_denver_nhoods <- st_read(paste0(wd,
                                 data_folder, 
                                "american_community_survey_nbrhd_2013_2017/american_community_survey_nbrhd_2013_2017.shp"))
 
+
+parks <- st_read(paste0(wd, 
+                        data_folder,
+                        "parks/parks.shp"))
+
+bg_sf <- block_groups(state = state_fips, county = county_fips)
+
+bg_sf_transformed <- bg_sf %>% 
+  st_transform(., crs = 2232)
+
 ```
 
 ```{r}
@@ -57,6 +67,14 @@ nhoods <- zillow_nhoods %>%
 nhood_name_vector <- nhoods %>% 
   pull(Name)
 
+
+
+bg_assigned_nhoods <- bg_sf_transformed %>% 
+  st_join(., nhoods %>% 
+            st_transform(., crs = 2232),
+          by = st_intersects)
+  
+st_crs(bg_sf)
 
 
 ```
@@ -150,7 +168,8 @@ leaflet() %>%
   ) %>%
   # TRACTS LAYERS
   addPolygons(
-    data = nhoods,
+    data = bg_assigned_nhoods %>% 
+      st_transform(., crs = 4326),
     fill = TRUE,
     fillColor = "orange",
     fillOpacity = 0.75,
