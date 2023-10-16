@@ -16,17 +16,17 @@ ui <- fluidPage(
     titlePanel(h1("Denver Neighborhood Explorer", align = "left")),
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
-        sidebarPanel(h3("Neighborhood Selection"),
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
+        sidebarPanel(
+              helpText("Learn about the demographics and character of Denver's neighborhoods."),
+              selectInput("var", 
+                          h3("Select a Neighborhood"), 
+                         choices = list("Athmar Park", 
+                                        "Auraria",
+                                        "Baker"), 
+                        selected = "Athmar Park")),
         # Show a plot of the generated distribution
         mainPanel(h4("Views"),
-           plotOutput("distPlot")
+              plotOutput("map")
         )
     )
 )
