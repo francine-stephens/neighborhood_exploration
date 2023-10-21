@@ -1,8 +1,8 @@
-# neighborhood exploration
+# Neighborhood Exploration
 Analysis for my personal housing and neighborhood searches
 
 
-Demographic Vars: 
+**Demographic Vars:** 
 
 *Economy*
 
@@ -25,7 +25,8 @@ Demographic Vars:
 * Unit Size
 * Vacant Units
 
-* Population*
+*Population*
+
 * Children
 * Education
 * Family size
